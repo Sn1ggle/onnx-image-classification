@@ -14,7 +14,7 @@
     <div class="container-fluid">
         <h1><b>onnx-image-classification</b></h1>
         <b>ML EfficientNet-Lite4</b>
-        <p>ONNX Model Demonstration by mosa (Version 2.2)</p>
+        <p>ONNX Model Demonstration by wintepas</p>
 
         <form>
             <div class="form-group">
@@ -22,10 +22,19 @@
                 <input type="file" accept="image/png, image/jpeg" class="form-control-file" id="image" name="image"
                     onchange="checkFiles(this.files);">
             </div>
+            <div class="form-group my-3">
+                <label for="model">Modell wählen:</label>
+                <select id="model" class="form-control">
+                    <option value="original">EfficientNet-Lite4 (original)</option>
+                    <option value="int8">EfficientNet-Lite4 (int8 quantized)</option>
+                    <option value="qdq">EfficientNet-Lite4 (qdq quantized)</option>
+                </select>
+            </div>
         </form>
 
         <div id="answerPart" style="visibility: hidden;">
-            <br><p><b>Answer:</b>
+            <br>
+            <p><b>Answer:</b>
             <div id="answer"></div>
             </p>
 

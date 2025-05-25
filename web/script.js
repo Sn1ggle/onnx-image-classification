@@ -25,6 +25,9 @@ function checkFiles(files) {
     for (const name in files) {
         formData.append(name, files[name]);
     }
+    const model = document.getElementById("model").value;
+    formData.append("model", model);
+
 
     fetch('/analyze', {
         method: 'POST',
@@ -35,13 +38,19 @@ function checkFiles(files) {
         response => response.json()
     ).then(
         data => {
-            console.log(data);
-            let table = "<table><tr><th>Class</th><th>Value</th></tr>";
-            data.forEach(item => {
-                table += `<tr><td>${item.class}</td><td>${item.value}</td></tr>`;
-            });
-            table += "</table>";
-            answer.innerHTML = table;
+            if (Array.isArray(data)) {
+                // Einzelnes Modell: Standardantwort
+                let table = "<table><tr><th>Class</th><th>Value</th></tr>";
+                data.forEach(item => {
+                    table += `<tr><td>${item.class}</td><td>${item.value.toFixed(5)}</td></tr>`;
+                });
+                table += "</table>";
+                answer.innerHTML = table;
+            } else if (data.error) {
+                answer.innerHTML = `<p style="color:red;">Fehler: ${data.error}</p>`;
+            } else {
+                answer.innerHTML = "<p>Keine gültige Antwort erhalten.</p>";
+            }
         }
     ).catch(
         error => console.log(error)

@@ -10,7 +10,11 @@ app = Flask(__name__,
             static_url_path='/', 
             static_folder='web')
 
-ort_session = onnxruntime.InferenceSession("efficientnet-lite4-11.onnx")
+ort_sessions = {
+    "original": onnxruntime.InferenceSession("efficientnet-lite4-11.onnx"),
+    "int8": onnxruntime.InferenceSession("efficientnet-lite4-11-int8.onnx"),
+    "qdq": onnxruntime.InferenceSession("efficientnet-lite4-11-qdq.onnx")
+}
 
 # load the labels text file
 labels = json.load(open("labels_map.txt", "r"))
@@ -57,28 +61,27 @@ def indexPage():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-
-    # read the image
     content = request.files.get('0', '').read()
+    model_choice = request.form.get("model", "original")
 
-    # build numpy array from uploaded data
-    img = cv2.imdecode(np.fromstring(content, np.uint8), cv2.IMREAD_UNCHANGED)
+    if model_choice not in ort_sessions:
+        return jsonify({"error": "Ungültiges Modell gewählt."}), 400
 
-    # pre-process, see https://github.com/onnx/models/tree/master/vision/classification/efficientnet-lite4
+    session = ort_sessions[model_choice]
+
+    img = cv2.imdecode(np.frombuffer(content, np.uint8), cv2.IMREAD_UNCHANGED)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    # pre-process the image like mobilenet and resize it to 224x224
     img = pre_process_edgetpu(img, (224, 224, 3))
-
-    # create a batch of 1 (that batch size is buned into the saved_model)
     img_batch = np.expand_dims(img, axis=0)
 
-    # run inference
-    results = ort_session.run(["Softmax:0"], {"images:0": img_batch})[0]
-    result = reversed(results[0].argsort()[-5:])
+    try:
+        results = session.run(["Softmax:0"], {"images:0": img_batch})[0]
+    except:
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        results = session.run([output_name], {input_name: img_batch})[0]
 
-    for r in result:
-        result_list = [{"class": labels[str(r)], "value": float(results[0][r])} for r in result]
+    top_indices = reversed(results[0].argsort()[-5:])
+    result_list = [{"class": labels[str(i)], "value": float(results[0][i])} for i in top_indices]
 
-    # Return the result as JSON
     return jsonify(result_list)    
